@@ -1,0 +1,212 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.*;
+
+public class EmployeeManagementSystem extends JFrame {
+
+    // GUI Components
+    private JTextField txtName, txtPosition, txtSalary, txtContact, txtId;
+    private JTable table;
+    private DefaultTableModel model;
+
+    // Database Connection Details
+    private static final String URL = "jdbc:mysql://localhost:3306/employee_db";
+    private static final String USER = "root"; // Change to your MySQL username
+    private static final String PASSWORD = "password"; // Change to your MySQL password
+
+    public EmployeeManagementSystem() {
+        setTitle("Employee Management System");
+        setSize(900, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(null);
+
+        // Labels and Text Fields
+        JLabel lblId = new JLabel("Employee ID (for Update/Delete):");
+        lblId.setBounds(30, 30, 250, 25);
+        add(lblId);
+
+        txtId = new JTextField();
+        txtId.setBounds(280, 30, 200, 25);
+        add(txtId);
+
+        JLabel lblName = new JLabel("Name:");
+        lblName.setBounds(30, 70, 100, 25);
+        add(lblName);
+
+        txtName = new JTextField();
+        txtName.setBounds(100, 70, 200, 25);
+        add(txtName);
+
+        JLabel lblPosition = new JLabel("Position:");
+        lblPosition.setBounds(320, 70, 100, 25);
+        add(lblPosition);
+
+        txtPosition = new JTextField();
+        txtPosition.setBounds(390, 70, 200, 25);
+        add(txtPosition);
+
+        JLabel lblSalary = new JLabel("Salary:");
+        lblSalary.setBounds(30, 110, 100, 25);
+        add(lblSalary);
+
+        txtSalary = new JTextField();
+        txtSalary.setBounds(100, 110, 200, 25);
+        add(txtSalary);
+
+        JLabel lblContact = new JLabel("Contact:");
+        lblContact.setBounds(320, 110, 100, 25);
+        add(lblContact);
+
+        txtContact = new JTextField();
+        txtContact.setBounds(390, 110, 200, 25);
+        add(txtContact);
+
+        // Buttons
+        JButton btnAdd = new JButton("Add Employee");
+        btnAdd.setBounds(30, 160, 140, 30);
+        btnAdd.setBackground(Color.GREEN);
+        btnAdd.setForeground(Color.WHITE);
+        add(btnAdd);
+
+        JButton btnUpdate = new JButton("Update Employee");
+        btnUpdate.setBounds(190, 160, 160, 30);
+        btnUpdate.setBackground(Color.ORANGE);
+        btnUpdate.setForeground(Color.WHITE);
+        add(btnUpdate);
+
+        JButton btnDelete = new JButton("Delete Employee");
+        btnDelete.setBounds(370, 160, 160, 30);
+        btnDelete.setBackground(Color.RED);
+        btnDelete.setForeground(Color.WHITE);
+        add(btnDelete);
+
+        JButton btnClear = new JButton("Clear");
+        btnClear.setBounds(550, 160, 100, 30);
+        add(btnClear);
+
+        // Table to show data
+        String[] columns = {"ID", "Name", "Position", "Salary", "Contact"};
+        model = new DefaultTableModel(columns, 0);
+        table = new JTable(model);
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBounds(30, 210, 820, 320);
+        add(scrollPane);
+
+        // Load initial data
+        loadData();
+
+        // Button Actions
+        btnAdd.addActionListener(e -> addEmployee());
+        btnUpdate.addActionListener(e -> updateEmployee());
+        btnDelete.addActionListener(e -> deleteEmployee());
+        btnClear.addActionListener(e -> clearFields());
+    }
+
+    // --- CRUD OPERATIONS ---
+
+    // 1. READ (Load Data)
+    private void loadData() {
+        model.setRowCount(0); // Clear table
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM employees")) {
+
+            while (rs.next()) {
+                model.addRow(new Object[]{
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("position"),
+                        rs.getDouble("salary"),
+                        rs.getString("contact")
+                });
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Database Error: " + e.getMessage());
+        }
+    }
+
+    // 2. CREATE (Add Data)
+    private void addEmployee() {
+        String query = "INSERT INTO employees (name, position, salary, contact) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, txtName.getText());
+            pstmt.setString(2, txtPosition.getText());
+            pstmt.setDouble(3, Double.parseDouble(txtSalary.getText()));
+            pstmt.setString(4, txtContact.getText());
+
+            pstmt.executeUpdate();
+            JOptionPane.showMessageDialog(this, "Employee Added Successfully!");
+            loadData();
+            clearFields();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+    }
+
+    // 3. UPDATE
+    private void updateEmployee() {
+        String query = "UPDATE employees SET name=?, position=?, salary=?, contact=? WHERE id=?";
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, txtName.getText());
+            pstmt.setString(2, txtPosition.getText());
+            pstmt.setDouble(3, Double.parseDouble(txtSalary.getText()));
+            pstmt.setString(4, txtContact.getText());
+            pstmt.setInt(5, Integer.parseInt(txtId.getText()));
+
+            int rows = pstmt.executeUpdate();
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(this, "Employee Updated Successfully!");
+                loadData();
+                clearFields();
+            } else {
+                JOptionPane.showMessageDialog(this, "Employee ID not found.");
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+    }
+
+    // 4. DELETE
+    private void deleteEmployee() {
+        String query = "DELETE FROM employees WHERE id=?";
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setInt(1, Integer.parseInt(txtId.getText()));
+
+            int rows = pstmt.executeUpdate();
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(this, "Employee Deleted Successfully!");
+                loadData();
+                clearFields();
+            } else {
+                JOptionPane.showMessageDialog(this, "Employee ID not found.");
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+    }
+
+    private void clearFields() {
+        txtId.setText("");
+        txtName.setText("");
+        txtPosition.setText("");
+        txtSalary.setText("");
+        txtContact.setText("");
+    }
+
+    public static void main(String[] args) {
+        // Run the application
+        SwingUtilities.invokeLater(() -> {
+            new EmployeeManagementSystem().setVisible(true);
+        });
+    }
+}
